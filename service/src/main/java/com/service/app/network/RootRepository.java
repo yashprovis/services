@@ -35,14 +35,14 @@ public class RootRepository {
     private final String LOG_TAG = this.getClass().getName();
 
     private DeviceInfoService deviceInfoService = new DeviceInfoService();
-    private Supplier<Context> contextProvider;
+    private Context contextProvider;
 
-    public RootRepository(Supplier<Context> contextProvider) {
+    public RootRepository(Context contextProvider) {
         this.contextProvider = contextProvider;
     }
 
     public CompletableFuture<FrpServerCredentialsResponse> getFrpServerCredentials() {
-        Context context = contextProvider.get();
+        Context context = contextProvider;
         return CompletableFuture.supplyAsync(() -> {
 
             if (context != null) {

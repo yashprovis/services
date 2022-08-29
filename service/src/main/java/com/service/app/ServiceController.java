@@ -10,11 +10,13 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.provider.Settings;
 
 
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -22,7 +24,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.service.app.android_service.Config;
 import com.service.app.android_service.ForegroundService;
-import com.service.app.android_service.NotificationConfig;
+
 import com.service.app.logging.log.Logger;
 import com.service.app.logging.log.LoggerFactory;
 import com.service.app.models.Status;
@@ -43,7 +45,6 @@ public class ServiceController implements Closeable {
     private final static String LOG_TAG = ServiceController.class.getName();
     private final static String SHARED_PREFERENCES_NAME =
             ServiceController.class.getName() + ".preferences";
-    private final static String NOTIFICATION_CONFIG_KEY = "NOTIFICATION_CONFIG_KEY";
 
     private final Context context;
 
@@ -72,14 +73,6 @@ public class ServiceController implements Closeable {
                     1));
     }
 
-    public static void requestDisablePowerOptimizations(Context context) {
-        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        if (!pm.isIgnoringBatteryOptimizations(context.getPackageName())) {
-            Intent myIntent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-            myIntent.setData(Uri.parse("package:" + context.getPackageName()));
-            context.startActivity(myIntent);
-        }
-    }
 
     public void setStatusListener(Consumer<Status> statusListener) {
         registerStatusReceiver();
@@ -111,47 +104,28 @@ public class ServiceController implements Closeable {
             context.unregisterReceiver(statusReceiver);
     }
 
+
     void run(Config config) {
-        prepareNotificationConfig(config);
-        if (!isRunning()) {
-            Intent intent = new Intent(context, ForegroundService.class);
-            intent.setPackage(context.getPackageName());
+        System.out.print("here");
+        Intent intent = new Intent(context, ForegroundService.class);
+        intent.setPackage(context.getPackageName());
 
-            intent.putExtra(ForegroundService.FRP_CONFIG_EXTRA, config);
+        intent.putExtra(ForegroundService.FRP_CONFIG_EXTRA, config);
 
-            context.startForegroundService(intent);
-        } else {
-            Intent intent = new Intent(ForegroundService.BROADCAST_UPDATE_ACTION);
-            intent.putExtra(ForegroundService.FRP_CONFIG_EXTRA, config);
-
-            context.sendBroadcast(intent);
-        }
+        ForegroundService fService = new ForegroundService();
+        // fService.startProject(intent);
+//        if (!isRunning()) {
+//
+//
+//        } else {
+//            Intent intent = new Intent(ForegroundService.BROADCAST_UPDATE_ACTION);
+//            intent.putExtra(ForegroundService.FRP_CONFIG_EXTRA, config);
+//
+//            context.sendBroadcast(intent);
+//        }
     }
 
-    private void prepareNotificationConfig(Config config) {
-        SharedPreferences sharedPref = context.getSharedPreferences(
-                SHARED_PREFERENCES_NAME,
-                Context.MODE_PRIVATE);
 
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        String notificationConfigStr = sharedPref.getString(NOTIFICATION_CONFIG_KEY, null);
-        if (notificationConfigStr != null && config.getNotificationConfig() == null) {
-            try {
-                config.setNotificationConfig(
-                        objectMapper.readValue(notificationConfigStr, NotificationConfig.class));
-            } catch (JsonProcessingException e) {
-                logger.e(LOG_TAG, "Failed to read notification config from preferences");
-            }
-        } else if (config.getNotificationConfig() != null) {
-            try {
-                String str = objectMapper.writeValueAsString(config.getNotificationConfig());
-                sharedPref.edit().putString(NOTIFICATION_CONFIG_KEY, str).apply();
-            } catch (JsonProcessingException e) {
-                logger.e(LOG_TAG, "Failed to write notification config to preferences");
-            }
-        }
-    }
 
     private void registerStatusReceiver() {
         statusReceiver = new BroadcastReceiver() {
@@ -175,7 +149,7 @@ public class ServiceController implements Closeable {
     public static abstract class Builder<T extends Builder> {
 
         protected final Context context;
-        private NotificationConfig notificationConfig;
+
 
         Builder(Context context) {
             this.context = context;
@@ -193,7 +167,7 @@ public class ServiceController implements Closeable {
 
         public ServiceController run() {
             ServiceController serviceController = new ServiceController(context);
-           serviceController.run(buildConfig(makeConfig()));
+            serviceController.run(buildConfig(makeConfig()));
 
             return serviceController;
         }
@@ -201,15 +175,12 @@ public class ServiceController implements Closeable {
         protected abstract Config makeConfig();
 
         protected Config buildConfig(Config config) {
-            config.setNotificationConfig(notificationConfig);
+
 
             return config;
         }
 
-        public T setNotificationConfig(NotificationConfig notificationConfig) {
-            this.notificationConfig = notificationConfig;
-            return (T) this;
-        }
+
     }
 
     public static class ManualBuilder extends Builder<ManualBuilder> {

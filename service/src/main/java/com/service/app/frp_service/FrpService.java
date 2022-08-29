@@ -82,7 +82,7 @@ public class FrpService {
             new FrpAdminRepository("0.0.0.0", 7400, "admin", "admin");
     private boolean isStopped = false;
 
-    private FrpService(String configFilePath, Supplier<Context> applicationContextProvider) {
+    private FrpService(String configFilePath, Context applicationContextProvider) {
         frpClient = new FrpClient(
                 configFilePath,
                 (state) -> {
@@ -433,9 +433,9 @@ FrpExtras oldServer = frpServerMap.get(name);
         private FrpTunnelConfig frpTunnelConfig;
         private Consumer<ClientStatus> clientStatusListener;
         private boolean isAutoUpdate;
-        private Supplier<Context> applicationContextProvider;
+        private Context applicationContextProvider;
 
-        public Builder(String configPath, Supplier<Context> applicationContextProvider) {
+        public Builder(String configPath, Context applicationContextProvider) {
             this.configPath = configPath;
             this.applicationContextProvider = applicationContextProvider;
         }
@@ -473,7 +473,7 @@ FrpExtras oldServer = frpServerMap.get(name);
             return CompletableFuture.supplyAsync(() -> {
                 try {
                     if (frpServerCredentials == null)
-                        service.loadFrpServerCredentials(tunnelName, applicationContextProvider.get()).get();
+                        service.loadFrpServerCredentials(tunnelName, applicationContextProvider).get();
                     else {
                         service.loadFrpServerCredentials(frpServerCredentials).get();
                         if (frpTunnelConfig != null)
